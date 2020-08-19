@@ -42,22 +42,14 @@ export default function parseComponent (vueOptions) {
   }
 
   if (newLifecycle) {
+    componentOptions.methods.onReady = componentOptions.lifetimes.ready
     delete componentOptions.lifetimes.ready
-    componentOptions.methods.onReady = function () {
-      if (this.$vm) {
-        this.$vm._isMounted = true
-        this.$vm.__call_hook('mounted')
-        this.$vm.__call_hook('onReady')
-      } else {
-        // this.is && console.warn(this.is + ' is not attached')
-      }
-    }
   }
 
   componentOptions.messages = {
-    '__l': componentOptions.methods['__l']
+    __l: componentOptions.methods.__l
   }
-  delete componentOptions.methods['__l']
+  delete componentOptions.methods.__l
 
   return componentOptions
 }

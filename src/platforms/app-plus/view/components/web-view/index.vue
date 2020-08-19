@@ -1,5 +1,5 @@
 <template>
-  <uni-web-view v-on="$listeners"/>
+  <uni-web-view v-on="$listeners" />
 </template>
 <script>
 import {
@@ -13,7 +13,8 @@ const insertHTMLWebView = ({
   const parentWebview = plus.webview.currentWebview()
   // fixed by hxy web-view 组件所在的 webview 不注入 uni-app 框架
   const styles = {
-    'uni-app': 'none'
+    'uni-app': 'none',
+    isUniH5: true
   }
   const parentTitleNView = parentWebview.getTitleNView()
   if (parentTitleNView) {
@@ -27,7 +28,7 @@ const insertHTMLWebView = ({
   webview = plus.webview.create('', htmlId, styles)
   if (parentTitleNView) {
     webview.addEventListener('titleUpdate', function () {
-      let title = webview.getTitle()
+      const title = webview.getTitle()
       parentWebview.setStyle({
         titleNView: {
           titleText: (!title || title === 'null') ? '' : title

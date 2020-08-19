@@ -1,43 +1,58 @@
 <template>
   <uni-picker
     :disabled="disabled"
-    @click.stop="_show"
-    v-on="$listeners">
+    @click="_show"
+    v-on="$listeners"
+  >
     <div
       ref="picker"
       class="uni-picker-container"
-      @touchmove.prevent>
+      @touchmove.prevent
+    >
       <transition name="uni-fade">
         <div
           v-show="visible"
           class="uni-mask"
-          @click="_cancel" />
+          @click="_cancel"
+        />
       </transition>
       <div
         :class="{'uni-picker-toggle':visible}"
-        class="uni-picker">
+        class="uni-picker"
+      >
         <div
           class="uni-picker-header"
-          @click.stop>
+          @click.stop
+        >
           <div
             class="uni-picker-action uni-picker-action-cancel"
-            @click="_cancel">取消</div>
+            @click="_cancel"
+          >
+            取消
+          </div>
           <div
             class="uni-picker-action uni-picker-action-confirm"
-            @click="_change">确定</div>
+            @click="_change"
+          >
+            确定
+          </div>
         </div>
         <v-uni-picker-view
           v-if="visible"
           :value.sync="valueArray"
-          class="uni-picker-content">
+          class="uni-picker-content"
+        >
           <v-uni-picker-view-column
-            v-for="(range,index0) in rangeArray"
-            :key="index0">
+            v-for="(rangeItem,index0) in rangeArray"
+            :key="index0"
+          >
             <div
-              v-for="(item,index) in range"
+              v-for="(item,index) in rangeItem"
               :key="index"
               class="uni-picker-item"
-            >{{ typeof item==='object'?item[rangeKey]||'':item }}{{ units[index0]||'' }}</div>
+            >
+              {{ typeof item==='object'?item[rangeKey]||'':item }}{{ units[index0]||'' }}
+            </div>
           </v-uni-picker-view-column>
         </v-uni-picker-view>
         <!-- 第二种时间单位展示方式-暂时不用这种 -->
@@ -61,10 +76,10 @@ function getDefaultStartValue () {
     return '00:00'
   }
   if (this.mode === mode.DATE) {
-    let year = new Date().getFullYear() - 100
+    const year = new Date().getFullYear() - 100
     switch (this.fields) {
       case fields.YEAR:
-        return year
+        return year.toString()
       case fields.MONTH:
         return year + '-01'
       case fields.DAY:
@@ -79,10 +94,10 @@ function getDefaultEndValue () {
     return '23:59'
   }
   if (this.mode === mode.DATE) {
-    let year = new Date().getFullYear() + 100
+    const year = new Date().getFullYear() + 100
     switch (this.fields) {
       case fields.YEAR:
-        return year
+        return year.toString()
       case fields.MONTH:
         return year + '-12'
       case fields.DAY:
@@ -156,7 +171,7 @@ export default {
   },
   data () {
     return {
-      valueSync: this.value || 0,
+      valueSync: null,
       visible: false,
       valueChangeSource: '',
       timeArray: [],
@@ -177,7 +192,7 @@ export default {
           return this.timeArray
         case mode.DATE:
         {
-          let dateArray = this.dateArray
+          const dateArray = this.dateArray
           switch (this.fields) {
             case fields.YEAR:
               return [dateArray[0]]
@@ -188,6 +203,7 @@ export default {
           }
         }
       }
+      return []
     },
     startArray () {
       return this._getDateValueArray(this.start, getDefaultStartValue.bind(this)())
@@ -207,35 +223,32 @@ export default {
     }
   },
   watch: {
-    value (val) {
-      if (Array.isArray(val)) {
-        if (!Array.isArray(this.valueSync)) {
-          this.valueSync = []
-        }
-        this.valueSync.length = val.length
-        val.forEach((val, index) => {
-          if (val !== this.valueSync[index]) {
-            this.$set(this.valueSync, index, val)
-          }
-        })
-      } else if (typeof val !== 'object') {
-        this.valueSync = val
-      }
+    value () {
+      this._setValueSync()
+    },
+    mode () {
+      this._setValueSync()
+    },
+    range () {
+      this._setValueSync()
+    },
+    valueSync () {
+      this._setValueArray()
     },
     valueArray (val) {
       if (this.mode === mode.TIME || this.mode === mode.DATE) {
-        let getValue =
+        const getValue =
           this.mode === mode.TIME ? this._getTimeValue : this._getDateValue
-        let valueArray = this.valueArray
-        let startArray = this.startArray
-        let endArray = this.endArray
+        const valueArray = this.valueArray
+        const startArray = this.startArray
+        const endArray = this.endArray
         if (this.mode === mode.DATE) {
           const dateArray = this.dateArray
-          let max = dateArray[2].length
-          let day = Number(dateArray[2][valueArray[2]]) || 1
-          let realDay = new Date(
+          const max = dateArray[2].length
+          const day = Number(dateArray[2][valueArray[2]]) || 1
+          const realDay = new Date(
             `${dateArray[0][valueArray[0]]}/${
-              dateArray[1][valueArray[1]]
+            dateArray[1][valueArray[1]]
             }/${day}`
           ).getDate()
           if (realDay < day) {
@@ -269,8 +282,7 @@ export default {
     })
     this._createTime()
     this._createDate()
-    this.$watch('valueSync', this._setValue)
-    this.$watch('mode', this._setValue)
+    this._setValueSync()
   },
   beforeDestroy () {
     this.$refs.picker.remove()
@@ -285,7 +297,6 @@ export default {
         return
       }
       this.valueChangeSource = ''
-      this._setValue()
       var $picker = this.$refs.picker
       $picker.remove();
       (document.querySelector('uni-app') || document.body).appendChild($picker)
@@ -301,7 +312,20 @@ export default {
       }
     },
     _resetFormData () {
-      this.valueSync = 0
+      switch (this.mode) {
+        case mode.SELECTOR:
+          this.valueSync = 0
+          break
+        case mode.MULTISELECTOR:
+          this.valueSync = this.value.map(val => 0)
+          break
+        case mode.DATE:
+        case mode.TIME:
+          this.valueSync = ''
+          break
+        default:
+          break
+      }
     },
     _createTime () {
       var hours = []
@@ -346,13 +370,42 @@ export default {
         val1[i] = val2[i]
       }
     },
-    _setValue () {
+    _setValueSync () {
+      let val = this.value
+      switch (this.mode) {
+        case mode.MULTISELECTOR:
+          {
+            if (!Array.isArray(val)) {
+              val = []
+            }
+            if (!Array.isArray(this.valueSync)) {
+              this.valueSync = []
+            }
+            const length = this.valueSync.length = Math.max(val.length, this.range.length)
+            for (let index = 0; index < length; index++) {
+              const val0 = Number(val[index])
+              const val1 = Number(this.valueSync[index])
+              const val2 = isNaN(val0) ? (isNaN(val1) ? 0 : val1) : val0
+              const maxVal = this.range[index] ? this.range[index].length - 1 : 0
+              this.valueSync.splice(index, 1, (val2 < 0 || val2 > maxVal) ? 0 : val2)
+            }
+          }
+          break
+        case mode.TIME:
+        case mode.DATE:
+          this.valueSync = String(val)
+          break
+        default: {
+          const valueSync = Number(val)
+          this.valueSync = valueSync < 0 ? 0 : valueSync
+          break
+        }
+      }
+    },
+    _setValueArray () {
       var val = this.valueSync
       var valueArray
       switch (this.mode) {
-        case mode.SELECTOR:
-          valueArray = [val]
-          break
         case mode.MULTISELECTOR:
           valueArray = [...val]
           break
@@ -365,6 +418,9 @@ export default {
           valueArray = this._getDateValueArray(val, formatDateTime({
             mode: mode.DATE
           }))
+          break
+        default:
+          valueArray = [val]
           break
       }
       this.oldValueArray = [...valueArray]
@@ -420,7 +476,7 @@ export default {
     _change () {
       this._close()
       this.valueChangeSource = 'click'
-      let value = this._getValue()
+      const value = this._getValue()
       this.valueSync = Array.isArray(value) ? value.map(val => val) : value
       this.$trigger('change', {}, {
         value

@@ -68,6 +68,11 @@ function processPagesJson (pagesJson, loader = {
       console.error(`${pagesJsonJsFileName} 必须导出 function`)
     }
   }
+  // 将 subpackages 转换成 subPackages
+  if (pagesJson.subpackages && !pagesJson.subPackages) {
+    pagesJson.subPackages = pagesJson.subpackages
+    delete pagesJson.subpackages
+  }
 
   let uniNVueEntryPagePath
   if (pagesJson.pages && pagesJson.pages.length) { // 如果首页是 nvue
@@ -106,8 +111,8 @@ function isNVuePage (page, root = '') {
 }
 
 function isValidPage (page, root = '') {
-  if (typeof page === 'string') { // 不合法的配置
-    console.warn(`${page} 配置错误, 已被忽略, 查看文档: https://uniapp.dcloud.io/collocation/pages?id=pages`)
+  if (typeof page === 'string' || !page.path) { // 不合法的配置
+    console.warn('pages.json 页面配置错误, 已被忽略, 查看文档: https://uniapp.dcloud.io/collocation/pages?id=pages')
     return false
   }
   let pagePath = page.path
@@ -129,14 +134,7 @@ function isValidPage (page, root = '') {
         if (subNVuePath) {
           subNVuePath = subNVue.path.split('?')[0]
           const subNVuePagePath = removeExt(path.join(root, subNVuePath))
-
-          // if (process.env.UNI_USING_NVUE_COMPILER) {
           process.UNI_NVUE_ENTRY[subNVuePagePath] = getNVueMainJsPath(subNVuePagePath)
-          // } else {
-          //   process.UNI_NVUE_ENTRY[subNVuePagePath] = path.resolve(process.env.UNI_INPUT_DIR,
-          //     subNVuePagePath +
-          //                   '.nvue') + '?entry'
-          // }
         }
       })
     }
@@ -150,7 +148,7 @@ function isValidPage (page, root = '') {
 
     process.UNI_NVUE_ENTRY[pagePath] = getNVueMainJsPath(pagePath)
 
-    if (process.env.UNI_USING_V3) { // 不移除
+    if (process.env.UNI_USING_V3 || process.env.UNI_USING_V3_NATIVE) { // 不移除
       page.nvue = true
       return true
     } else {
@@ -214,7 +212,7 @@ function parseEntry (pagesJson) {
 
   process.UNI_NVUE_ENTRY = {}
 
-  if (process.env.UNI_USING_NATIVE) {
+  if (process.env.UNI_USING_NATIVE || process.env.UNI_USING_V3_NATIVE) {
     process.UNI_NVUE_ENTRY['app-config'] = path.resolve(process.env.UNI_INPUT_DIR, 'pages.json')
     process.UNI_NVUE_ENTRY['app-service'] = path.resolve(process.env.UNI_INPUT_DIR, getMainEntry())
   }
@@ -366,10 +364,10 @@ function initAutoImportScanComponents () {
 
   const components = getAutoComponentsByDir(componentsPath)
 
-  if (process.env.UNI_PLATFORM === 'quickapp') {
+  if (process.env.UNI_PLATFORM === 'quickapp-native') {
     if (!uniQuickAppAutoImportScanComponents) {
       uniQuickAppAutoImportScanComponents = getAutoComponentsByDir(
-        path.resolve(require.resolve('@dcloudio/uni-quickapp'), '../../components'),
+        path.resolve(require.resolve('@dcloudio/uni-quickapp-native'), '../../components'),
         true
       )
     }
